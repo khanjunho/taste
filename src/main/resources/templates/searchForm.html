@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>카카오맵 키워드 검색</title>
+  <!-- 카카오 지도 SDK 로드 -->
+  <script
+          type="text/javascript"
+          th:src="'//dapi.kakao.com/v2/maps/sdk.js?appkey=' + ${kakaoAppKey}">
+  </script>
+  <style>
+    /* 지도 스타일 */
+    #map {
+      width: 100%;
+      height: 300px;
+      margin-bottom: 20px;
+    }
+  </style>
+  <script>
+    let map;
+    let marker;
+
+    // 지도 초기화 함수
+    function initMap() {
+      const mapContainer = document.getElementById('map'); // 지도를 표시할 div
+      const mapOption = {
+        center: new kakao.maps.LatLng(37.4550, 127.1475), // 초기 중심좌표 (성남시 중원구)
+        level: 5 // 지도 확대 레벨
+      };
+
+      // 지도 생성
+      map = new kakao.maps.Map(mapContainer, mapOption);
+
+      // 지도 클릭 이벤트 등록
+      kakao.maps.event.addListener(map, 'click', function (mouseEvent) {
+        const latlng = mouseEvent.latLng; // 클릭한 위치의 좌표
+
+        // 마커가 이미 있으면 위치 이동
+        if (marker) {
+          marker.setPosition(latlng);
+        } else {
+          // 새 마커 생성
+          marker = new kakao.maps.Marker({
+            position: latlng,
+            map: map
+          });
+        }
+
+        // 클릭한 위치의 좌표를 숨겨진 input 필드에 저장
+        document.getElementById('latitude').value = latlng.getLat();
+        document.getElementById('longitude').value = latlng.getLng();
+      });
+    }
+
+    // 페이지 로드 후 지도 초기화
+    window.onload = initMap;
+
+    // 카테고리 추가 로직
+    function addCategory() {
+      const categorySelect = document.getElementById("category");
+      const selectedCategory = categorySelect.options[categorySelect.selectedIndex].text;
+
+      const addedCategories = document.getElementById("addedCategories");
+
+      // 중복 추가 방지
+      if ([...addedCategories.children].some(item => item.textContent === selectedCategory)) {
+        alert("이미 추가된 카테고리입니다.");
+        return;
+      }
+
+      // 새로운 카테고리를 리스트에 추가
+      const newCategory = document.createElement("li");
+      newCategory.textContent = selectedCategory;
+
+      // 삭제 버튼 추가
+      const removeButton = document.createElement("button");
+      removeButton.textContent = "삭제";
+      removeButton.style.marginLeft = "10px";
+      removeButton.onclick = function () {
+        addedCategories.removeChild(newCategory);
+        updateHiddenField();
+      };
+      newCategory.appendChild(removeButton);
+
+      addedCategories.appendChild(newCategory);
+
+      // 숨겨진 필드 업데이트
+      updateHiddenField();
+    }
+
+    // 숨겨진 필드 업데이트
+    function updateHiddenField() {
+      const addedCategories = document.getElementById("addedCategories");
+      const categories = [...addedCategories.children].map(item =>
+              item.textContent.replace("삭제", "").trim()
+      );
+      document.getElementById("selectedCategories").value = categories.join(",");
+    }
+  </script>
+</head>
+<body>
+<h1>카카오맵 키워드 검색</h1>
+
+<!-- 지도 표시 -->
+<div id="map"></div>
+
+<form th:action="@{/kakao/searchResult}" method="post">
+  <!-- 위도와 경도를 저장하는 숨겨진 필드 -->
+  <input type="hidden" id="latitude" name="latitude" required />
+  <input type="hidden" id="longitude" name="longitude" required />
+
+  <!-- 카테고리 선택 -->
+  <label for="category">카테고리: </label>
+  <select id="category">
+    <option value="당구장">당구장</option>
+    <option value="피시방">피시방</option>
+    <option value="볼링장">볼링장</option>
+    <option value="헬스장">헬스장</option>
+    <option value="카페">카페</option>
+  </select>
+  <button type="button" id="addCategoryButton" onclick="addCategory()">추가</button>
+  <br /><br />
+
+  <!-- 추가된 카테고리 표시 -->
+  <h3>선택된 카테고리</h3>
+  <ul id="addedCategories"></ul>
+  <input type="hidden" id="selectedCategories" name="categories" />
+
+  <!-- 검색 반경 입력 -->
+  <label for="radius">검색 반경 (미터): </label>
+  <input type="number" id="radius" name="radius" min="100" max="10000" placeholder="예: 1000" required />
+  <br /><br />
+
+  <!-- 제출 버튼 -->
+  <button type="submit">검색</button>
+</form>
+</body>
+</html>
